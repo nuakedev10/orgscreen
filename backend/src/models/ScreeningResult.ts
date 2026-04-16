@@ -60,7 +60,7 @@ const ScreeningResultSchema = new Schema<IScreeningResult>({
     },
     reasoning: String
   }],
-  aiModel: { type: String, default: 'gemini-1.5-pro' },
+  aiModel: { type: String, default: 'gemini-2.5-flash' },
   promptVersion: { type: String, default: 'v1' },
   createdAt: { type: Date, default: Date.now }
 });

@@ -1,4 +1,4 @@
-import { generateContent } from './geminiService';
+import { generateJson } from './geminiService';
 import { buildScreeningPrompt } from './promptService';
 import { IOrganization } from '../models/Organization';
 import { IJob } from '../models/Job';
@@ -26,32 +26,43 @@ export const runScreening = async (
   // Build the full personalized prompt
   const prompt = buildScreeningPrompt(org, job, candidates, shortlistSize);
 
-  console.log(`Running screening for ${candidates.length} candidates...`);
+  console.log(`[screening] Running Gemini screening for ${candidates.length} candidates (shortlist=${shortlistSize})...`);
 
-  // Send to Gemini
-  const rawResponse = await generateContent(prompt);
-
-  // Clean the response — Gemini sometimes wraps JSON in markdown
-  const cleaned = rawResponse
-    .replace(/```json/g, '')
-    .replace(/```/g, '')
-    .trim();
-
-  // Parse the JSON response
-  let parsed: ScreeningOutput;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch (error) {
-    console.error('Failed to parse Gemini response:', cleaned);
-    throw new Error('AI returned an invalid response format. Please try again.');
-  }
+  // Send to Gemini in strict JSON mode. generateJson throws a descriptive
+  // error if the model returns empty / malformed output, which we want to
+  // bubble up to the client instead of swallowing.
+  const parsed = await generateJson<ScreeningOutput>(prompt);
 
   // Validate the response has a shortlist
   if (!parsed.shortlist || !Array.isArray(parsed.shortlist)) {
-    throw new Error('AI response missing shortlist data');
+    throw new Error('AI response is missing a "shortlist" array. Model may have truncated.');
   }
 
-  console.log(`Screening complete. Shortlisted ${parsed.shortlist.length} candidates.`);
+  // Defensive: some candidates may miss fields, fill in safe defaults.
+  parsed.shortlist = parsed.shortlist.map((c: any, i: number) => ({
+    candidateId: c.candidateId,
+    fullName: c.fullName || 'Unknown candidate',
+    rank: c.rank ?? i + 1,
+    overallScore: Math.max(0, Math.min(100, c.overallScore ?? 0)),
+    dimensionScores: {
+      skills: c.dimensionScores?.skills ?? 0,
+      experience: c.dimensionScores?.experience ?? 0,
+      education: c.dimensionScores?.education ?? 0,
+      cultureFit: c.dimensionScores?.cultureFit ?? 0,
+    },
+    strengths: Array.isArray(c.strengths) ? c.strengths : [],
+    gaps: Array.isArray(c.gaps) ? c.gaps : [],
+    biasFlags: Array.isArray(c.biasFlags) ? c.biasFlags : [],
+    recommendation: c.recommendation || 'Consider',
+    reasoning: c.reasoning || '',
+  }));
 
-  return parsed;
+  console.log(`[screening] Complete. Shortlisted ${parsed.shortlist.length} candidates.`);
+
+  return {
+    shortlist: parsed.shortlist,
+    totalCandidatesScreened: parsed.totalCandidatesScreened ?? candidates.length,
+    shortlistSize: parsed.shortlistSize ?? shortlistSize,
+    screeningNotes: parsed.screeningNotes || '',
+  };
 };

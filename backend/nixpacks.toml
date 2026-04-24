@@ -1,0 +1,6 @@
+# Pin Node 20 for Railway/Nixpacks builds. Mongoose 8 / MongoDB 7 driver
+# require Node >=20.19, and the default Nixpacks image still ships Node 18.
+providers = ["node"]
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "npm-9_x"]

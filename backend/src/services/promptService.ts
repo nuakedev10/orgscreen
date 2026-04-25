@@ -1,7 +1,6 @@
 import { IOrganization } from '../models/Organization';
 import { IJob } from '../models/Job';
 import { ICandidate } from '../models/Candidate';
-import mongoose from 'mongoose';
 
 // Builds the organization context block injected into every prompt
 export const buildOrgContext = (org: IOrganization): string => {
@@ -60,23 +59,95 @@ ${job.additionalNotes ? `Additional Notes: ${job.additionalNotes}` : ''}
 `.trim();
 };
 
-// Formats a single candidate for the prompt
+// Formats a single candidate for the prompt (Umurava Talent Profile shape)
 export const formatCandidate = (candidate: ICandidate, index: number): string => {
-  const workHistory = candidate.workHistory
-    .map(w => `  - ${w.role} at ${w.company} (${w.duration}): ${w.description}`)
-    .join('\n');
+  const fullName = (candidate.firstName + ' ' + candidate.lastName).trim();
+
+  const skills = (candidate.skills || []).length
+    ? candidate.skills
+        .map(s => {
+          const yrs = s.yearsOfExperience ? ' ~' + s.yearsOfExperience + 'y' : '';
+          return s.name + ' (' + s.level + yrs + ')';
+        })
+        .join(', ')
+    : 'Not specified';
+
+  const languages = (candidate.languages || []).length
+    ? candidate.languages.map(l => l.name + ' (' + l.proficiency + ')').join(', ')
+    : 'Not specified';
+
+  const experience = (candidate.experience || []).length
+    ? candidate.experience
+        .map(e => {
+          const end = e.isCurrent ? 'Present' : e.endDate || 'Present';
+          const tech = e.technologies && e.technologies.length ? ' [' + e.technologies.join(', ') + ']' : '';
+          const desc = e.description ? ': ' + e.description : '';
+          return '  - ' + e.role + ' at ' + e.company + ' (' + e.startDate + ' to ' + end + ')' + tech + desc;
+        })
+        .join('\n')
+    : '  Not provided';
+
+  const education = (candidate.education || []).length
+    ? candidate.education
+        .map(ed => {
+          const years =
+            ed.startYear || ed.endYear
+              ? ' (' + (ed.startYear || '?') + '-' + (ed.endYear || 'present') + ')'
+              : '';
+          const field = ed.fieldOfStudy ? ' in ' + ed.fieldOfStudy : '';
+          return '  - ' + ed.degree + field + ', ' + ed.institution + years;
+        })
+        .join('\n')
+    : '  Not provided';
+
+  const certifications = (candidate.certifications || []).length
+    ? candidate.certifications
+        .map(c => '  - ' + c.name + ' (' + c.issuer + (c.issueDate ? ', ' + c.issueDate : '') + ')')
+        .join('\n')
+    : '  None listed';
+
+  const projects = (candidate.projects || []).length
+    ? candidate.projects
+        .map(p => {
+          const tech = p.technologies && p.technologies.length ? ' [' + p.technologies.join(', ') + ']' : '';
+          const role = p.role ? ' - ' + p.role : '';
+          return '  - ' + p.name + role + tech + ': ' + p.description;
+        })
+        .join('\n')
+    : '  None listed';
+
+  const availability = candidate.availability
+    ? candidate.availability.status + ' / ' + candidate.availability.type +
+      (candidate.availability.startDate ? ' (from ' + candidate.availability.startDate + ')' : '')
+    : 'Not specified';
+
+  const linkParts = [
+    candidate.socialLinks?.linkedin ? 'LinkedIn: ' + candidate.socialLinks.linkedin : '',
+    candidate.socialLinks?.github ? 'GitHub: ' + candidate.socialLinks.github : '',
+    candidate.socialLinks?.portfolio ? 'Portfolio: ' + candidate.socialLinks.portfolio : '',
+  ].filter(Boolean);
+  const links = linkParts.join(' | ');
 
   return `
 CANDIDATE ${index + 1}:
 ID: ${candidate._id}
-Name: ${candidate.fullName}
+Name: ${fullName}
+Headline: ${candidate.headline || 'Not specified'}
 Location: ${candidate.location || 'Not specified'}
-Years of Experience: ${candidate.yearsOfExperience}
-Skills: ${candidate.skills.join(', ')}
-Education: ${candidate.education.degree} in ${candidate.education.field} from ${candidate.education.institution}
-Work History:
-${workHistory || '  Not provided'}
-${candidate.resumeText ? `Resume Summary: ${candidate.resumeText.substring(0, 500)}...` : ''}
+Bio: ${candidate.bio || 'Not provided'}
+Availability: ${availability}
+${links ? 'Links: ' + links : ''}
+Skills: ${skills}
+Languages: ${languages}
+Experience:
+${experience}
+Education:
+${education}
+Certifications:
+${certifications}
+Projects:
+${projects}
+${candidate.resumeText ? 'Resume Excerpt: ' + candidate.resumeText.substring(0, 400) + '...' : ''}
 `.trim();
 };
 
@@ -117,8 +188,11 @@ ${candidateList}
 4. Return only the top ${shortlistSize} candidates ranked by overall score.
 5. For each shortlisted candidate, provide clear recruiter-friendly reasoning.
 6. Flag any candidate who may have been disadvantaged by non-linear career paths,
-   career gaps, or geography — these are common in African talent pools and should
+   career gaps, or geography. These are common in African talent pools and should
    not be penalized unfairly.
+7. Use the candidate's projects, certifications, and detailed skill levels as
+   first-class evidence. A strong portfolio of relevant projects can outweigh a
+   shorter formal work history.
 
 === RESPONSE FORMAT ===
 You MUST respond with valid JSON only. No extra text, no markdown, no explanation outside the JSON.
@@ -144,10 +218,10 @@ You MUST respond with valid JSON only. No extra text, no markdown, no explanatio
         "No direct experience with fintech regulations"
       ],
       "biasFlags": [
-        "Career gap of 8 months likely due to relocation — should not be penalized"
+        "Career gap of 8 months likely due to relocation - should not be penalized"
       ],
       "recommendation": "Strong Hire",
-      "reasoning": "Kwame brings 6 years of hands-on data engineering experience that directly maps to the role requirements. His background at an East African fintech startup demonstrates both technical depth and cultural alignment with ${org.name}'s mission. The brief career gap appears relocation-related and should not reduce his consideration."
+      "reasoning": "Concise recruiter-facing rationale tied to the organisation's mission, the job requirements, and concrete evidence from the candidate's experience, projects, and skill levels."
     }
   ],
   "totalCandidatesScreened": ${candidates.length},

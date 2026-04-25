@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { ArrowLeft, Mail, Github, MapPin, Sparkles, User } from 'lucide-react';
+import { ArrowLeft, Mail, Code, MapPin, Sparkles, User } from 'lucide-react';
 import BrandMark from '@/components/BrandMark';
 
 const team = [
@@ -17,7 +17,7 @@ const team = [
       "and storyteller for ideas that don't get heard often enough on the continent.",
     links: [
       { label: 'Email', href: 'mailto:silogrp1@gmail.com', icon: <Mail size={14} /> },
-      { label: 'GitHub', href: 'https://github.com/nuakedev10', icon: <Github size={14} /> }
+      { label: 'GitHub', href: 'https://github.com/nuakedev10', icon: <Code size={14} /> }
     ]
   }
 ];

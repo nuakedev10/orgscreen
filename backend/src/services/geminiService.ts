@@ -24,7 +24,8 @@ export const getGeminiModel = (opts?: { jsonMode?: boolean }) => {
   }
 
   return genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash',
+    // Hackathon: 2.0-flash has a 200/day free tier vs 20/day on 2.5-flash.
+    model: 'gemini-2.0-flash',
     generationConfig,
   });
 };

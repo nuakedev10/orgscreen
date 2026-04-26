@@ -119,16 +119,26 @@ Respond ONLY with valid JSON in this exact structure (no markdown, no code block
 }`;
 
     const raw = await generateContent(prompt);
-    const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const jobDescription = JSON.parse(cleaned);
+
+    // Extract JSON robustly — handles preamble text, thinking output, and code fences
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('No JSON found in Gemini response. Raw:', raw.slice(0, 500));
+      res.status(500).json({ error: 'AI returned invalid JSON. Please try again.' });
+      return;
+    }
+    const jobDescription = JSON.parse(jsonMatch[0]);
 
     res.json({ jobDescription });
   } catch (error: any) {
-    console.error('Generate job description error:', error);
+    console.error('Generate job description error:', error?.message || error);
     if (error instanceof SyntaxError) {
       res.status(500).json({ error: 'AI returned invalid JSON. Please try again.' });
     } else {
-      res.status(500).json({ error: 'Failed to generate job description' });
+      res.status(500).json({
+        error: 'Failed to generate job description',
+        detail: error?.message || 'Unknown error'
+      });
     }
   }
 };

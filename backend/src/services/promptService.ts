@@ -59,95 +59,35 @@ ${job.additionalNotes ? `Additional Notes: ${job.additionalNotes}` : ''}
 `.trim();
 };
 
-// Formats a single candidate for the prompt (Umurava Talent Profile shape)
 export const formatCandidate = (candidate: ICandidate, index: number): string => {
-  const fullName = (candidate.firstName + ' ' + candidate.lastName).trim();
-
   const skills = (candidate.skills || []).length
-    ? candidate.skills
-        .map(s => {
-          const yrs = s.yearsOfExperience ? ' ~' + s.yearsOfExperience + 'y' : '';
-          return s.name + ' (' + s.level + yrs + ')';
-        })
-        .join(', ')
+    ? candidate.skills.join(', ')
     : 'Not specified';
 
-  const languages = (candidate.languages || []).length
-    ? candidate.languages.map(l => l.name + ' (' + l.proficiency + ')').join(', ')
-    : 'Not specified';
-
-  const experience = (candidate.experience || []).length
-    ? candidate.experience
-        .map(e => {
-          const end = e.isCurrent ? 'Present' : e.endDate || 'Present';
-          const tech = e.technologies && e.technologies.length ? ' [' + e.technologies.join(', ') + ']' : '';
-          const desc = e.description ? ': ' + e.description : '';
-          return '  - ' + e.role + ' at ' + e.company + ' (' + e.startDate + ' to ' + end + ')' + tech + desc;
-        })
+  const workHistory = (candidate.workHistory || []).length
+    ? candidate.workHistory
+        .map(e => `  - ${e.role} at ${e.company} (${e.duration}): ${e.description}`)
         .join('\n')
     : '  Not provided';
 
-  const education = (candidate.education || []).length
-    ? candidate.education
-        .map(ed => {
-          const years =
-            ed.startYear || ed.endYear
-              ? ' (' + (ed.startYear || '?') + '-' + (ed.endYear || 'present') + ')'
-              : '';
-          const field = ed.fieldOfStudy ? ' in ' + ed.fieldOfStudy : '';
-          return '  - ' + ed.degree + field + ', ' + ed.institution + years;
-        })
-        .join('\n')
+  const edu = candidate.education;
+  const education = (edu?.degree || edu?.institution)
+    ? `  - ${edu.degree}${edu.field ? ' in ' + edu.field : ''}, ${edu.institution}`
     : '  Not provided';
-
-  const certifications = (candidate.certifications || []).length
-    ? candidate.certifications
-        .map(c => '  - ' + c.name + ' (' + c.issuer + (c.issueDate ? ', ' + c.issueDate : '') + ')')
-        .join('\n')
-    : '  None listed';
-
-  const projects = (candidate.projects || []).length
-    ? candidate.projects
-        .map(p => {
-          const tech = p.technologies && p.technologies.length ? ' [' + p.technologies.join(', ') + ']' : '';
-          const role = p.role ? ' - ' + p.role : '';
-          return '  - ' + p.name + role + tech + ': ' + p.description;
-        })
-        .join('\n')
-    : '  None listed';
-
-  const availability = candidate.availability
-    ? candidate.availability.status + ' / ' + candidate.availability.type +
-      (candidate.availability.startDate ? ' (from ' + candidate.availability.startDate + ')' : '')
-    : 'Not specified';
-
-  const linkParts = [
-    candidate.socialLinks?.linkedin ? 'LinkedIn: ' + candidate.socialLinks.linkedin : '',
-    candidate.socialLinks?.github ? 'GitHub: ' + candidate.socialLinks.github : '',
-    candidate.socialLinks?.portfolio ? 'Portfolio: ' + candidate.socialLinks.portfolio : '',
-  ].filter(Boolean);
-  const links = linkParts.join(' | ');
 
   return `
 CANDIDATE ${index + 1}:
 ID: ${candidate._id}
-Name: ${fullName}
-Headline: ${candidate.headline || 'Not specified'}
+Name: ${candidate.fullName}
+Email: ${candidate.email}
 Location: ${candidate.location || 'Not specified'}
-Bio: ${candidate.bio || 'Not provided'}
-Availability: ${availability}
-${links ? 'Links: ' + links : ''}
+Years of Experience: ${candidate.yearsOfExperience ?? 'Not specified'}
 Skills: ${skills}
-Languages: ${languages}
-Experience:
-${experience}
+Work History:
+${workHistory}
 Education:
 ${education}
-Certifications:
-${certifications}
-Projects:
-${projects}
-${candidate.resumeText ? 'Resume Excerpt: ' + candidate.resumeText.substring(0, 400) + '...' : ''}
+${candidate.resumeText ? 'Resume Excerpt: ' + candidate.resumeText.substring(0, 600) + '...' : ''}
 `.trim();
 };
 

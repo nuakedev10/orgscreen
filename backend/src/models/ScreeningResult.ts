@@ -14,7 +14,7 @@ export interface ICandidateScore {
   strengths: string[];
   gaps: string[];
   biasFlags: string[];
-  recommendation: 'Strong Hire' | 'Hire' | 'Maybe' | 'No Hire';
+  recommendation: string;
   reasoning: string;
 }
 
@@ -54,10 +54,7 @@ const ScreeningResultSchema = new Schema<IScreeningResult>({
     strengths: [String],
     gaps: [String],
     biasFlags: [String],
-    recommendation: {
-      type: String,
-      enum: ['Strong Hire', 'Hire', 'Maybe', 'No Hire']
-    },
+    recommendation: { type: String },
     reasoning: String
   }],
   aiModel: { type: String, default: 'gemini-2.5-flash' },

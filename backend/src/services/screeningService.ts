@@ -38,6 +38,15 @@ export const runScreening = async (
     throw new Error('AI response is missing a "shortlist" array. Model may have truncated.');
   }
 
+  const normalizeRecommendation = (raw: string): string => {
+    const r = (raw || '').toLowerCase();
+    if (r.includes('strong hire') || r.includes('strongly')) return 'Strong Hire';
+    if (r.includes('no hire') || r.includes('reject') || r.includes('not recommend')) return 'No Hire';
+    if (r.includes('maybe') || r.includes('consider') || r.includes('potential')) return 'Maybe';
+    if (r.includes('hire')) return 'Hire';
+    return 'Maybe';
+  };
+
   // Defensive: some candidates may miss fields, fill in safe defaults.
   parsed.shortlist = parsed.shortlist.map((c: any, i: number) => ({
     candidateId: c.candidateId,
@@ -53,7 +62,7 @@ export const runScreening = async (
     strengths: Array.isArray(c.strengths) ? c.strengths : [],
     gaps: Array.isArray(c.gaps) ? c.gaps : [],
     biasFlags: Array.isArray(c.biasFlags) ? c.biasFlags : [],
-    recommendation: c.recommendation || 'Consider',
+    recommendation: normalizeRecommendation(c.recommendation),
     reasoning: c.reasoning || '',
   }));
 
